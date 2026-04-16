@@ -49,6 +49,6 @@ public class DeclineRequest
 
         var response = req.CreateResponse(System.Net.HttpStatusCode.OK);
         await response.WriteStringAsync("Request declined.");
-        return response;
+        return response; 
     }
 }
