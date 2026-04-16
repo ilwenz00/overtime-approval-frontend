@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;   // <-- REQUIRED
 using Newtonsoft.Json;
 using System.Collections.Generic;
 using System;
@@ -17,7 +18,6 @@ public static class SubmitOvertime
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "submit-overtime")] HttpRequest req,
         ILogger log)
     {
-        // Read body
         string body = await new StreamReader(req.Body).ReadToEndAsync();
         log.LogInformation($"Received body: {body}");
 
