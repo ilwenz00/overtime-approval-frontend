@@ -14,12 +14,36 @@ public static class SubmitOvertime
 
     [FunctionName("SubmitOvertime")]
     public static async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "submit-overtime")] HttpRequest req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "submit-overtime")] HttpRequest req,
+        ILogger log)
     {
+        // Read body
         string body = await new StreamReader(req.Body).ReadToEndAsync();
-        dynamic data = JsonConvert.DeserializeObject(body);
+        log.LogInformation($"Received body: {body}");
 
-        var request = new {
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            return new BadRequestObjectResult("Request body is empty.");
+        }
+
+        dynamic data;
+        try
+        {
+            data = JsonConvert.DeserializeObject(body);
+        }
+        catch (Exception ex)
+        {
+            log.LogError($"JSON parse error: {ex.Message}");
+            return new BadRequestObjectResult("Invalid JSON format.");
+        }
+
+        if (data == null || data.date == null || data.hours == null || data.reason == null)
+        {
+            return new BadRequestObjectResult("Missing required fields: date, hours, reason.");
+        }
+
+        var request = new
+        {
             id = Guid.NewGuid().ToString(),
             date = (string)data.date,
             hours = (string)data.hours,
@@ -28,6 +52,8 @@ public static class SubmitOvertime
         };
 
         Requests.Add(request);
+
+        log.LogInformation($"Overtime request stored with ID: {request.id}");
 
         return new OkObjectResult("Overtime request submitted.");
     }
