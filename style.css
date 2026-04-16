@@ -1,0 +1,21 @@
+body {
+    font-family: Arial;
+    margin: 40px;
+}
+
+form, .request {
+    border: 1px solid #ccc;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+}
+
+label {
+    display: block;
+    margin-top: 10px;
+}
+
+button {
+    margin-top: 15px;
+    padding: 10px 20px;
+}
