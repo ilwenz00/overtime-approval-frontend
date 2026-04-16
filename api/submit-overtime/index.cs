@@ -11,26 +11,23 @@ using System;
 
 public static class SubmitOvertime
 {
-    public static List<dynamic> Requests = new List<dynamic>();
+    public static List<OvertimeRequest> Requests = new List<OvertimeRequest>();
 
     [FunctionName("SubmitOvertime")]
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "submit-overtime")] HttpRequest req,
         ILogger log)
     {
-        // Read request body
         string body = await new StreamReader(req.Body).ReadToEndAsync();
         log.LogInformation($"Received body: {body}");
 
         if (string.IsNullOrWhiteSpace(body))
-        {
             return new BadRequestObjectResult("Request body is empty.");
-        }
 
-        dynamic data;
+        OvertimeRequest data;
         try
         {
-            data = JsonConvert.DeserializeObject(body);
+            data = JsonConvert.DeserializeObject<OvertimeRequest>(body);
         }
         catch (Exception ex)
         {
@@ -38,26 +35,28 @@ public static class SubmitOvertime
             return new BadRequestObjectResult("Invalid JSON format.");
         }
 
-        // Validate required fields
-        if (data == null || data.date == null || data.hours == null || data.reason == null)
+        if (data == null || string.IsNullOrWhiteSpace(data.date) ||
+            string.IsNullOrWhiteSpace(data.hours) || string.IsNullOrWhiteSpace(data.reason))
         {
             return new BadRequestObjectResult("Missing required fields: date, hours, reason.");
         }
 
-        // Create request object
-        var request = new
-        {
-            id = Guid.NewGuid().ToString(),
-            date = (string)data.date,
-            hours = (string)data.hours,
-            reason = (string)data.reason,
-            status = "pending"
-        };
+        data.id = Guid.NewGuid().ToString();
+        data.status = "pending";
 
-        Requests.Add(request);
+        Requests.Add(data);
 
-        log.LogInformation($"Overtime request stored with ID: {request.id}");
+        log.LogInformation($"Stored overtime request ID: {data.id}");
 
         return new OkObjectResult("Overtime request submitted.");
     }
+}
+
+public class OvertimeRequest
+{
+    public string id { get; set; }
+    public string date { get; set; }
+    public string hours { get; set; }
+    public string reason { get; set; }
+    public string status { get; set; }
 }
