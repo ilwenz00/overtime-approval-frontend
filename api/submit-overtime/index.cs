@@ -1,20 +1,27 @@
 using System;
-using System.Data.SqlClient;
+using System.IO;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
-public static class SubmitOvertime
+public class SubmitOvertime
 {
-    [FunctionName("submit-overtime")]
-    public static async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequest req)
+    private readonly ILogger<SubmitOvertime> _logger;
+
+    public SubmitOvertime(ILogger<SubmitOvertime> logger)
     {
-        string requestBody = await req.ReadAsStringAsync();
-        dynamic data = JsonConvert.DeserializeObject(requestBody);
+        _logger = logger;
+    }
+
+    [Function("submit-overtime")]
+    public async Task<HttpResponseData> Run(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
+    {
+        string body = await new StreamReader(req.Body).ReadToEndAsync();
+        dynamic data = JsonConvert.DeserializeObject(body);
 
         DateTime dateSubmitted = data?.dateSubmitted;
         int hours = data?.hours;
@@ -41,6 +48,8 @@ public static class SubmitOvertime
             }
         }
 
-        return new OkObjectResult("Overtime request submitted.");
+        var response = req.CreateResponse(System.Net.HttpStatusCode.OK);
+        await response.WriteStringAsync("Overtime request submitted.");
+        return response;
     }
 }
