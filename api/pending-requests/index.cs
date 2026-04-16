@@ -1,17 +1,24 @@
 using System;
-using System.Data.SqlClient;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.AspNetCore.Http;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 
-public static class PendingRequests
+public class PendingRequests
 {
-    [FunctionName("pending-requests")]
-    public static async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequest req)
+    private readonly ILogger<PendingRequests> _logger;
+
+    public PendingRequests(ILogger<PendingRequests> logger)
+    {
+        _logger = logger;
+    }
+
+    [Function("pending-requests")]
+    public async Task<HttpResponseData> Run(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
     {
         string connString = Environment.GetEnvironmentVariable("SqlConnectionString");
         var results = new List<object>();
@@ -44,6 +51,8 @@ public static class PendingRequests
             }
         }
 
-        return new OkObjectResult(results);
+        var response = req.CreateResponse(System.Net.HttpStatusCode.OK);
+        await response.WriteStringAsync(JsonConvert.SerializeObject(results));
+        return response;
     }
 }
