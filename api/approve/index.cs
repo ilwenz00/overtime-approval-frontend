@@ -1,20 +1,32 @@
 using System;
-using System.Data.SqlClient;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
 
-public static class ApproveRequest
+public class ApproveRequest
 {
-    [FunctionName("approve")]
-    public static async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequest req)
+    private readonly ILogger<ApproveRequest> _logger;
+
+    public ApproveRequest(ILogger<ApproveRequest> logger)
     {
-        string id = req.Query["id"];
+        _logger = logger;
+    }
+
+    [Function("approve")]
+    public async Task<HttpResponseData> Run(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
+    {
+        var query = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
+        string id = query["id"];
+
         if (string.IsNullOrEmpty(id))
-            return new BadRequestObjectResult("Missing id parameter.");
+        {
+            var bad = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
+            await bad.WriteStringAsync("Missing id parameter.");
+            return bad;
+        }
 
         string connString = Environment.GetEnvironmentVariable("SqlConnectionString");
 
@@ -35,6 +47,8 @@ public static class ApproveRequest
             }
         }
 
-        return new OkObjectResult("Request approved.");
+        var response = req.CreateResponse(System.Net.HttpStatusCode.OK);
+        await response.WriteStringAsync("Request approved.");
+        return response;
     }
 }
