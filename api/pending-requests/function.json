@@ -1,17 +1,14 @@
 {
   "bindings": [
     {
-      "authLevel": "anonymous",
       "type": "httpTrigger",
       "direction": "in",
       "methods": [ "get" ],
-      "name": "req",
-      "route": "pending-requests"
+      "authLevel": "anonymous"
     },
     {
       "type": "http",
-      "direction": "out",
-      "name": "res"
+      "direction": "out"
     }
   ]
 }
