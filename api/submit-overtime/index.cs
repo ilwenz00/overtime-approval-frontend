@@ -1,62 +1,46 @@
-using System.IO;
+using System;
+using System.Data.SqlClient;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using System.Collections.Generic;
-using System;
 
 public static class SubmitOvertime
 {
-    public static List<OvertimeRequest> Requests = new List<OvertimeRequest>();
-
-    [FunctionName("SubmitOvertime")]
+    [FunctionName("submit-overtime")]
     public static async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "submit-overtime")] HttpRequest req,
-        ILogger log)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequest req)
     {
-        string body = await new StreamReader(req.Body).ReadToEndAsync();
-        log.LogInformation($"Received body: {body}");
+        string requestBody = await req.ReadAsStringAsync();
+        dynamic data = JsonConvert.DeserializeObject(requestBody);
 
-        if (string.IsNullOrWhiteSpace(body))
-            return new BadRequestObjectResult("Request body is empty.");
+        DateTime dateSubmitted = data?.dateSubmitted;
+        int hours = data?.hours;
+        string reason = data?.reason;
 
-        OvertimeRequest data;
-        try
+        string connString = Environment.GetEnvironmentVariable("SqlConnectionString");
+
+        using (SqlConnection conn = new SqlConnection(connString))
         {
-            data = JsonConvert.DeserializeObject<OvertimeRequest>(body);
+            await conn.OpenAsync();
+
+            string sql = @"
+                INSERT INTO OvertimeRequests (Id, DateSubmitted, Hours, Reason, Status)
+                VALUES (NEWID(), @DateSubmitted, @Hours, @Reason, 'Pending')
+            ";
+
+            using (SqlCommand cmd = new SqlCommand(sql, conn))
+            {
+                cmd.Parameters.AddWithValue("@DateSubmitted", dateSubmitted);
+                cmd.Parameters.AddWithValue("@Hours", hours);
+                cmd.Parameters.AddWithValue("@Reason", reason);
+
+                await cmd.ExecuteNonQueryAsync();
+            }
         }
-        catch (Exception ex)
-        {
-            log.LogError($"JSON parse error: {ex.Message}");
-            return new BadRequestObjectResult("Invalid JSON format.");
-        }
-
-        if (data == null || string.IsNullOrWhiteSpace(data.date) ||
-            string.IsNullOrWhiteSpace(data.hours) || string.IsNullOrWhiteSpace(data.reason))
-        {
-            return new BadRequestObjectResult("Missing required fields: date, hours, reason.");
-        }
-
-        data.id = Guid.NewGuid().ToString();
-        data.status = "pending";
-
-        Requests.Add(data);
-
-        log.LogInformation($"Stored overtime request ID: {data.id}");
 
         return new OkObjectResult("Overtime request submitted.");
     }
-}
-
-public class OvertimeRequest
-{
-    public string id { get; set; }
-    public string date { get; set; }
-    public string hours { get; set; }
-    public string reason { get; set; }
-    public string status { get; set; }
 }
