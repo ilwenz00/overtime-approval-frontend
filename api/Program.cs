@@ -1,3 +1,4 @@
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Hosting;
 
 var host = new HostBuilder()
@@ -5,3 +6,4 @@ var host = new HostBuilder()
     .Build();
 
 host.Run();
+
