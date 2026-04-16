@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;   // <-- REQUIRED
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System.Collections.Generic;
 using System;
@@ -18,6 +18,7 @@ public static class SubmitOvertime
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "submit-overtime")] HttpRequest req,
         ILogger log)
     {
+        // Read request body
         string body = await new StreamReader(req.Body).ReadToEndAsync();
         log.LogInformation($"Received body: {body}");
 
@@ -37,11 +38,13 @@ public static class SubmitOvertime
             return new BadRequestObjectResult("Invalid JSON format.");
         }
 
+        // Validate required fields
         if (data == null || data.date == null || data.hours == null || data.reason == null)
         {
             return new BadRequestObjectResult("Missing required fields: date, hours, reason.");
         }
 
+        // Create request object
         var request = new
         {
             id = Guid.NewGuid().ToString(),
